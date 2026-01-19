@@ -1,12 +1,10 @@
 import redis.asyncio as redis
 from app.core.config import settings
 
-# Modificamos la conexión para que sea robusta con Upstash en la nube
+# Volvemos a la versión simple
 redis_pool = redis.ConnectionPool.from_url(
     settings.REDIS_URL, 
-    decode_responses=True,
-    # ESTO ES LO NUEVO: Evita el error "Connection closed"
-    ssl_cert_reqs=None 
+    decode_responses=True
 )
 
 async def get_redis():
