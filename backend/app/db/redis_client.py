@@ -1,36 +1,29 @@
 import redis.asyncio as redis
-import ssl
 from urllib.parse import urlparse
 from app.core.config import settings
 
-# 1. Analizamos la URL
+# 1. Desarmamos la URL para tener los datos limpios
 url = urlparse(settings.REDIS_URL)
 
-# 2. Configuración SSL manual (El "Pase VIP" de seguridad)
-ssl_context = ssl.create_default_context()
-ssl_context.check_hostname = False
-ssl_context.verify_mode = ssl.CERT_NONE
-
-# 3. Construimos el Pool FORZANDO la clase SSLConnection
-# Esto es lo que soluciona el error "unexpected keyword argument".
-# Al usar explícitamente SSLConnection, garantizamos que acepte los argumentos SSL.
-redis_pool = redis.ConnectionPool(
-    host=url.hostname,
-    port=url.port,
-    password=url.password,
-    username=url.username,
-    db=0,
-    decode_responses=True,
-    # --- LA SOLUCIÓN ---
-    connection_class=redis.SSLConnection,  # Forzamos conexión segura
-    ssl_context=ssl_context                # Le pasamos el contexto permisivo
-)
-
+# 2. Creamos la función generadora
 async def get_redis():
-    client = redis.Redis(connection_pool=redis_pool)
+    # 3. Instanciamos Redis DIRECTAMENTE (Sin ConnectionPool manual)
+    # Esto deja que la librería gestione la piscina internamente.
+    client = redis.Redis(
+        host=url.hostname,
+        port=url.port,
+        password=url.password,
+        username=url.username, # Puede ser None, no importa
+        db=0,
+        decode_responses=True,
+        # --- CONFIGURACIÓN SSL CRÍTICA ---
+        ssl=True,                  # Activamos SSL explícitamente
+        ssl_cert_reqs="none"       # Le decimos que ignore certificados (String "none")
+    )
+    
     try:
-        # Hacemos un PING rápido al conectar para validar
-        # await client.ping() 
+        # Probamos conexión (Opcional, pero recomendado para debug)
+        # await client.ping()
         yield client
     finally:
         await client.close()
