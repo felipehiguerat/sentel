@@ -1,0 +1,14 @@
+name: network-watcher
+channels:
+  - conda-forge
+  - defaults
+dependencies:
+  - python=3.10
+  - fastapi
+  - uvicorn
+  - sqlalchemy
+  - psycopg2  # Conda maneja mejor los binarios de postgres que pip
+  - asyncpg   # Para conexiones asíncronas a SQL
+  - redis-py  # Cliente de Redis
+  - pydantic-settings
+  - python-dotenv
