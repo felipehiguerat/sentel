@@ -3,8 +3,6 @@ import { useState, useEffect, useRef } from 'react';
 export const useSocket = () => {
     const [isConnected, setIsConnected] = useState(false);
     const [isRunning, setIsRunning] = useState(false);
-
-    // NUEVO ESTADO: Para guardar el mensaje de por qué se detuvo
     const [stopReason, setStopReason] = useState(null);
 
     const [packets, setPackets] = useState([]);
@@ -15,61 +13,77 @@ export const useSocket = () => {
     const socketRef = useRef(null);
 
     useEffect(() => {
-        const wsUrl = 'ws://localhost:8000/api/v1/ws/traffic';
-        socketRef.current = new WebSocket(wsUrl);
+        const wsUrl = process.env.NEXT_PUBLIC_WS_URL;
+        console.log("[WS] Connecting to:", wsUrl);
+        const ws = new WebSocket(wsUrl);
+        socketRef.current = ws;
 
-        socketRef.current.onopen = () => setIsConnected(true);
-        socketRef.current.onclose = () => {
+        ws.onopen = () => {
+            console.log("[WS] OPEN");
+            setIsConnected(true);
+        };
+        ws.onclose = () => {
+            console.log("[WS] CLOSE");
             setIsConnected(false);
             setIsRunning(false);
         };
-
-        socketRef.current.onmessage = (event) => {
+        ws.onerror = (err) => {
+            console.error("[WS] ERROR", err);
+        };
+        ws.onmessage = (event) => {
             try {
                 const data = JSON.parse(event.data);
 
-                // --- CONTROL DE LÍMITE ---
-                if (data.type === "CONTROL" && data.code === "LIMIT_REACHED") {
-                    setIsRunning(false);
-                    // Guardamos el mensaje para mostrarlo en la UI
-                    setStopReason("SAFETY PROTOCOL: DEMO LIMIT REACHED (150 EVENTS)");
+                // CONTROL FRAMES
+                if (data?.type === "CONTROL") {
+                    console.log("[WS][CONTROL]", data.code, data.message);
+                    if (data.code === "START_ACK") {
+                        setIsRunning(true);
+                        setStopReason(null);
+                    } else if (data.code === "STOP_ACK") {
+                        setIsRunning(false);
+                    } else if (data.code === "LIMIT_REACHED") {
+                        setIsRunning(false);
+                        setStopReason("SAFETY PROTOCOL: DEMO LIMIT REACHED");
+                    }
                     return;
                 }
 
-                if (!data.src_ip) return;
+                // PACKETS
+                if (!data?.src_ip) return;
 
                 counters.current.pps += 1;
                 if (data.is_anomaly) {
                     counters.current.ops += 6;
                     counters.current.anomalies += 1;
-                    setThreats(prev => [{ ...data, time: new Date().toLocaleTimeString(), id: Math.random().toString(36).substr(2, 9) }, ...prev.slice(0, 50)]);
+                    setThreats(prev => [
+                        { ...data, time: new Date().toLocaleTimeString(), id: Math.random().toString(36).slice(2) },
+                        ...prev.slice(0, 50)
+                    ]);
                 }
                 setPackets(prev => [...prev.slice(-25), { ...data, id: Math.random() }]);
             } catch (e) {
-                // Ignorar
+                // heartbeats/otros
             }
         };
 
-        return () => socketRef.current?.close();
+        return () => ws.close();
     }, []);
 
     const toggleSimulation = () => {
-        if (socketRef.current && socketRef.current.readyState === WebSocket.OPEN) {
-            if (isRunning) {
-                socketRef.current.send("STOP");
-                setIsRunning(false);
-                setStopReason("MANUAL ABORT"); // Mensaje opcional si lo paras tú
-            } else {
-                socketRef.current.send("START");
-                setIsRunning(true);
-                setStopReason(null); // ¡Limpiamos el mensaje al reiniciar!
-                setPackets([]);
-            }
+        const ws = socketRef.current;
+        if (!ws || ws.readyState !== WebSocket.OPEN) return;
+        if (isRunning) {
+            ws.send("STOP");
+            // el STOP real llega por STOP_ACK
+        } else {
+            ws.send("START");
+            // marcado final llega por START_ACK
         }
     };
 
     useEffect(() => {
-        const interval = setInterval(() => {
+        const id = setInterval(() => {
             const snapshot = {
                 time: new Date().toLocaleTimeString(),
                 pps: counters.current.pps,
@@ -79,11 +93,10 @@ export const useSocket = () => {
             setChartHistory(prev => [...prev.slice(-30), snapshot]);
             counters.current = { pps: 0, ops: 0, anomalies: 0 };
         }, 1000);
-        return () => clearInterval(interval);
+        return () => clearInterval(id);
     }, []);
 
     const currentStats = chartHistory[chartHistory.length - 1] || { pps: 0, ops: 0, anomalies: 0 };
 
-    // Retornamos stopReason también
     return { isConnected, isRunning, stopReason, toggleSimulation, packets, threats, chartHistory, currentStats };
 };

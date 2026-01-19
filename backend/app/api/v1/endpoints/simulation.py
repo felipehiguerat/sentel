@@ -12,7 +12,10 @@ from app.crud.threat import create_threat_log
 router = APIRouter()
 
 SIMULATION_SPEED = 0.1
-DEMO_LIMIT = 150  # Límite de seguridad
+DEMO_LIMIT = 150  # safety limit
+
+async def _send_control(websocket: WebSocket, code: str, message: str):
+    await websocket.send_json({"type": "CONTROL", "code": code, "message": message})
 
 @router.websocket("/ws/traffic")
 async def websocket_simulation(
@@ -21,69 +24,60 @@ async def websocket_simulation(
     db: Session = Depends(get_db)
 ):
     await websocket.accept()
-    
-    # Variables de estado
+
     is_running = False
     session_anomalies = 0
-    
-    # Asegúrate de que esta línea esté al mismo nivel que las variables de arriba
-    print("[WS] Cliente conectado. Esperando comando START...")
-    
+    print("[WS] Client connected. Waiting for START...")
+
     try:
         while True:
-            # --- 1. ESCUCHAR COMANDOS ---
+            # 1) escuchar comandos sin bloquear
             try:
-                message = await asyncio.wait_for(websocket.receive_text(), timeout=0.01)
-                
-                if message == "START":
+                cmd = await asyncio.wait_for(websocket.receive_text(), timeout=0.02)
+                if cmd == "START":
                     is_running = True
                     session_anomalies = 0
-                    print("[WS] Simulación INICIADA ▶")
-                elif message == "STOP":
+                    print("[WS] ▶ START received")
+                    await _send_control(websocket, "START_ACK", "Simulation started")
+                elif cmd == "STOP":
                     is_running = False
-                    print("[WS] Simulación DETENIDA MANUALMENTE ⏸")
+                    print("[WS] ⏸ STOP received")
+                    await _send_control(websocket, "STOP_ACK", "Simulation stopped")
+                else:
+                    print(f"[WS] Unknown command: {cmd}")
+                    await _send_control(websocket, "UNKNOWN_CMD", f"Unknown: {cmd}")
             except asyncio.TimeoutError:
                 pass
 
-            # --- 2. LÓGICA DE SIMULACIÓN ---
+            # 2) lógica principal
             if is_running:
-                
-                # A. Verificar Límite de Demo
+
+                # límite de demo
                 if session_anomalies >= DEMO_LIMIT:
                     is_running = False
-                    print(f"[WS] Límite de demo alcanzado ({DEMO_LIMIT}). Deteniendo.")
-                    
-                    await websocket.send_json({
-                        "type": "CONTROL",
-                        "code": "LIMIT_REACHED",
-                        "message": f"Demo stopped: Limit of {DEMO_LIMIT} threats reached for safety."
-                    })
+                    print(f"[WS] Limit {DEMO_LIMIT} reached. Pausing.")
+                    await _send_control(websocket, "LIMIT_REACHED",
+                                        f"Demo stopped at {DEMO_LIMIT} threats for safety.")
                     continue
 
-                # B. Generar y Procesar
                 packet = TrafficGenerator.generate_packet()
 
                 if TrafficGenerator.should_analyze_with_redis(packet):
                     is_attack = await check_ip_traffic(redis, packet.src_ip)
-                    
                     if is_attack:
                         packet.is_anomaly = True
                         create_threat_log(db, packet)
                         session_anomalies += 1
 
-                # C. Enviar paquete normal
                 await websocket.send_json(packet.model_dump())
-                
                 await asyncio.sleep(SIMULATION_SPEED)
-            
             else:
-                # Pausa activa (ahorro de CPU)
-                await asyncio.sleep(0.5)
+                await asyncio.sleep(0.4)
 
     except WebSocketDisconnect:
-        print("[WS] Cliente desconectado")
+        print("[WS] Client disconnected")
     except Exception as e:
-        print(f"[WS] Error crítico: {e}")
+        print(f"[WS] Error: {e}")
         try:
             await websocket.close()
         except:
