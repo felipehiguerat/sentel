@@ -2,10 +2,12 @@ import { LineChart, Line, ResponsiveContainer, BarChart, Bar, AreaChart, Area } 
 
 export const DashboardStats = ({ chartHistory, currentStats }) => {
     return (
-        <div className="h-48 border-t border-slate-800 bg-slate-900/80 grid grid-cols-3 gap-px bg-slate-800 backdrop-blur-sm z-20">
+        // CAMBIO 1: h-auto para móvil (crece según contenido), md:h-48 para escritorio.
+        // CAMBIO 2: grid-cols-1 para móvil (una columna), md:grid-cols-3 para escritorio.
+        <div className="h-auto md:h-48 border-t border-slate-800 bg-slate-900/80 grid grid-cols-1 md:grid-cols-3 gap-px bg-slate-800 backdrop-blur-sm z-20">
 
-            {/* 1. TRAFFIC INGRESS (Area Chart - Azul) */}
-            <div className="bg-[#0f111a] p-5 flex flex-col justify-between group hover:bg-[#131620] transition-colors">
+            {/* 1. TRAFFIC INGRESS */}
+            <div className="bg-[#0f111a] p-5 flex flex-col justify-between group hover:bg-[#131620] transition-colors min-h-[180px] md:min-h-0">
                 <div className="flex justify-between items-end mb-2">
                     <div>
                         <div className="text-slate-500 text-[10px] uppercase tracking-widest font-bold mb-1">Traffic Ingress</div>
@@ -31,15 +33,15 @@ export const DashboardStats = ({ chartHistory, currentStats }) => {
                                 strokeWidth={2}
                                 fillOpacity={1}
                                 fill="url(#colorPps)"
-                                isAnimationActive={false} // Desactivar animación inicial para rendimiento real-time
+                                isAnimationActive={false}
                             />
                         </AreaChart>
                     </ResponsiveContainer>
                 </div>
             </div>
 
-            {/* 2. REDIS THROUGHPUT (Bar Chart - Celeste) */}
-            <div className="bg-[#0f111a] p-5 flex flex-col justify-between group hover:bg-[#131620] transition-colors">
+            {/* 2. REDIS THROUGHPUT */}
+            <div className="bg-[#0f111a] p-5 flex flex-col justify-between group hover:bg-[#131620] transition-colors min-h-[180px] md:min-h-0">
                 <div>
                     <div className="text-slate-500 text-[10px] uppercase tracking-widest font-bold mb-1">Redis Ops</div>
                     <div className="text-3xl font-bold text-blue-400 font-mono">
@@ -61,8 +63,8 @@ export const DashboardStats = ({ chartHistory, currentStats }) => {
                 </div>
             </div>
 
-            {/* 3. ACTIVE THREATS (Line Chart - Rojo) */}
-            <div className="bg-[#0f111a] p-5 flex flex-col justify-between relative overflow-hidden group hover:bg-[#131620] transition-colors">
+            {/* 3. ACTIVE THREATS */}
+            <div className="bg-[#0f111a] p-5 flex flex-col justify-between relative overflow-hidden group hover:bg-[#131620] transition-colors min-h-[180px] md:min-h-0">
                 <div className="relative z-10">
                     <div className="text-slate-500 text-[10px] uppercase tracking-widest font-bold mb-1">Anomalies Detected</div>
                     <div className="text-3xl font-bold text-red-500 font-mono">
@@ -70,7 +72,6 @@ export const DashboardStats = ({ chartHistory, currentStats }) => {
                     </div>
                 </div>
 
-                {/* Fondo rojo sutil si hay amenazas */}
                 {currentStats.anomalies > 0 && (
                     <div className="absolute inset-0 bg-red-900/10 animate-pulse pointer-events-none" />
                 )}

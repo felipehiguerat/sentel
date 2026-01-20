@@ -1,11 +1,14 @@
 import { useEffect, useRef } from 'react';
 
 export const ThreatFeed = ({ threats, onSelectThreat }) => {
-  // Referencia para auto-scroll (opcional, pero se ve bien)
+  // Referencia para auto-scroll
   const feedRef = useRef(null);
 
   return (
-    <aside className="w-96 border-l border-slate-800 bg-slate-900/80 p-4 flex flex-col h-screen fixed right-0 top-0 z-20 backdrop-blur-sm">
+    // CAMBIO: 'hidden md:flex'
+    // 1. hidden: En móvil desaparece por completo.
+    // 2. md:flex: En escritorio aparece a la derecha, con su ancho de 384px (w-96).
+    <aside className="hidden md:flex w-96 border-l border-slate-800 bg-slate-900/80 p-4 flex-col h-screen fixed right-0 top-0 z-20 backdrop-blur-sm">
 
       {/* Título del Panel */}
       <div className="flex justify-between items-center mb-6 text-xs font-mono uppercase text-slate-400 border-b border-slate-800 pb-4 mt-2">
