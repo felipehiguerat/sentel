@@ -58,9 +58,9 @@ export default function Home() {
           
           Opción A (Recomendada): Ocultarlo en móvil para no tapar la pantalla.
       */}
-      <div className="hidden md:block">
+      
          <ThreatFeed threats={threats} onSelectThreat={setSelectedThreat} />
-      </div>
+      
 
     </div>
   );

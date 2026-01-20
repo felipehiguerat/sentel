@@ -1,14 +1,17 @@
 import { useEffect, useRef } from 'react';
 
 export const ThreatFeed = ({ threats, onSelectThreat }) => {
-  // Referencia para auto-scroll
   const feedRef = useRef(null);
 
   return (
-    // CAMBIO: 'hidden md:flex'
-    // 1. hidden: En móvil desaparece por completo.
-    // 2. md:flex: En escritorio aparece a la derecha, con su ancho de 384px (w-96).
-    <aside className="hidden md:flex w-96 border-l border-slate-800 bg-slate-900/80 p-4 flex-col h-screen fixed right-0 top-0 z-20 backdrop-blur-sm">
+    // CAMBIOS IMPORTANTES AQUÍ:
+    // 1. Quitamos 'hidden'. Ahora es 'flex' siempre.
+    // 2. Móvil: 'w-full relative h-96'. Ocupa todo el ancho, se pone en el flujo normal (abajo) y tiene altura limitada.
+    // 3. Desktop (md:): 'md:w-96 md:fixed md:h-screen'. Recupera su forma de barra lateral fija.
+    <aside className="flex flex-col border-l border-slate-800 bg-slate-900/80 p-4 backdrop-blur-sm z-20
+      w-full relative h-96 mt-4 md:mt-0
+      md:w-96 md:fixed md:right-0 md:top-0 md:h-screen
+    ">
 
       {/* Título del Panel */}
       <div className="flex justify-between items-center mb-6 text-xs font-mono uppercase text-slate-400 border-b border-slate-800 pb-4 mt-2">
@@ -34,7 +37,6 @@ export const ThreatFeed = ({ threats, onSelectThreat }) => {
             key={t.id}
             className="bg-slate-800/40 border-l-2 border-red-500 p-3 rounded-r text-xs animate-in slide-in-from-right fade-in duration-300 group hover:bg-slate-800 transition-colors"
           >
-            {/* Cabecera de la Tarjeta */}
             <div className="flex justify-between text-red-400 font-bold mb-1">
               <span className="animate-pulse">[CRITICAL]</span>
               <span className="opacity-70 font-mono">{t.time}</span>
@@ -44,7 +46,6 @@ export const ThreatFeed = ({ threats, onSelectThreat }) => {
               DoS pattern detected. Threshold exceeded.
             </p>
 
-            {/* Pie de la Tarjeta */}
             <div className="flex justify-between items-center mt-2 pt-2 border-t border-slate-700/50">
               <span className="text-slate-400 font-mono bg-black/30 px-1 rounded">
                 SRC: {t.src_ip}
